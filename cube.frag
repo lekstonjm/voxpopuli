@@ -1,0 +1,10 @@
+#version 120
+
+uniform vec4 COLOR;
+void main(){
+
+	// Output color = color specified in the vertex shader, 
+	// interpolated between all 3 surrounding vertices
+	gl_FragColor = COLOR;
+
+}

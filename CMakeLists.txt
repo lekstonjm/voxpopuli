@@ -20,31 +20,71 @@ include_directories(
 	${GLEW_INCLUDE_PATH}
 	${GLM_INCLUDE_PATH}
 )
-
-add_executable(tuto1
-	tuto1.cpp
-	shader.cpp
-	simplex.cpp
-	simple.vert
-	simple.frag
-)
-
 add_compile_options(${CMAKE_REQUIRED_FLAGS})
 
-target_link_libraries(tuto1
+add_executable(landscape
+	landscape.cpp
+	shader.cpp
+	simplex.cpp
+	cube.vert
+	cube.frag
+)
+
+target_link_libraries(landscape
 	${OPENGL_LIBRARY} # filled by "find_package(OpenGL REQUIRED)"
 	${GLFW_LIBRARY}
 	${GLEW_LIBRARY}
 )
+
 add_custom_command(
-        TARGET tuto1 POST_BUILD
+        TARGET landscape POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/simple.vert
-                ${CMAKE_CURRENT_BINARY_DIR}/simple.vert
+                ${CMAKE_SOURCE_DIR}/cube.vert
+                ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/cube.frag
+                ${CMAKE_CURRENT_BINARY_DIR}				
 )
+
+add_executable(tuto02
+	tuto02.cpp
+	shader.cpp
+	tuto02.vert
+	tuto02.frag
+)
+target_link_libraries(tuto02
+	${OPENGL_LIBRARY} # filled by "find_package(OpenGL REQUIRED)"
+	${GLFW_LIBRARY}
+	${GLEW_LIBRARY}
+)
+
 add_custom_command(
-        TARGET tuto1 POST_BUILD
+        TARGET tuto02 POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/simple.frag
-                ${CMAKE_CURRENT_BINARY_DIR}/simple.frag
+                ${CMAKE_SOURCE_DIR}/tuto02.vert
+                ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tuto02.frag
+                ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(tuto04
+	tuto04.cpp
+	shader.cpp
+	tuto04.vert
+	tuto04.frag
+)
+target_link_libraries(tuto04
+	${OPENGL_LIBRARY} # filled by "find_package(OpenGL REQUIRED)"
+	${GLFW_LIBRARY}
+	${GLEW_LIBRARY}
+)
+
+add_custom_command(
+        TARGET tuto04 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tuto04.vert
+                ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tuto04.frag
+                ${CMAKE_CURRENT_BINARY_DIR}
 )

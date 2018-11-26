@@ -1,8 +1,8 @@
-#ifndef _CUBE_HPP_
-#define _CUBE_HPP_
-    #include <GL/glew.h>
-    static const GLfloat g_vertex_buffer_data[] = { 
-    -1.0f,-1.0f,-1.0f,
+#pragma once
+#include <GL/glew.h>
+
+static const GLfloat g_vertex_buffer_data[] = { 
+-1.0f,-1.0f,-1.0f,
     -1.0f,-1.0f, 1.0f,
     -1.0f, 1.0f, 1.0f,
     1.0f, 1.0f,-1.0f,
@@ -39,5 +39,3 @@
     -1.0f, 1.0f, 1.0f,
     1.0f,-1.0f, 1.0f
 };
-
-#endif
