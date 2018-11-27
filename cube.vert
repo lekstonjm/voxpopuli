@@ -2,6 +2,7 @@
 
 // Input vertex data, different for all executions of this shader.
 attribute vec3 vertexPosition_modelspace;
+attribute vec3 vertexNormal_modelspace;
 
 // Values that stay constant for the whole mesh.
 uniform mat4 MVP;

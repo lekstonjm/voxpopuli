@@ -73,63 +73,98 @@ int main( void )
 
 	// Get a handle for our buffers
 	GLuint vertexPosition_modelspaceID = glGetAttribLocation(programID, "vertexPosition_modelspace");
+	GLuint vertexNormal_modelspaceID = glGetAttribLocation(programID, "vertexNormal_modelspace");
 	// Projection matrix : 45� Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-	glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
+	glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 10000.0f);
 	// Camera matrix
 	glm::mat4 View       = glm::lookAt(
-								glm::vec3(0,0,20), // Camera is at (4,3,-3), in World Space
-								glm::vec3(0,0,0), // and looks at the origin
+								glm::vec3(0,2,0), // Camera is at (4,3,-3), in World Space
+								glm::vec3(0,0,-20), // and looks at the origin
 								glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 						   );
-
+	GLfloat normals_buffer_data[12*3*3];
+	for (int triangle_index = 0; triangle_index < 12; triangle_index++) {
+		int index = triangle_index * 3 * 3;
+		glm::vec3 v1(g_vertex_buffer_data[index++], g_vertex_buffer_data[index ++], g_vertex_buffer_data[index++]);
+		glm::vec3 v2(g_vertex_buffer_data[index++], g_vertex_buffer_data[index ++], g_vertex_buffer_data[index++]);
+		glm::vec3 v3(g_vertex_buffer_data[index++], g_vertex_buffer_data[index ++], g_vertex_buffer_data[index++]);
+		glm::vec3 vv1 = v2 - v1;
+		glm::vec3 vv2 = v3 - v2;
+		glm::vec3 normal = glm::normalize(glm::cross(vv1, vv2));
+		index = triangle_index * 3 * 3;		
+		for (int vertex_index = 0; vertex_index < 3; vertex_index++) {
+			normals_buffer_data[index++] = normal.x;
+			normals_buffer_data[index++] = normal.y;
+			normals_buffer_data[index++] = normal.z;
+		}
+	}
 	GLuint vertexbuffer;
 	glGenBuffers(1, &vertexbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
+	GLuint normalbuffer;
+	glGenBuffers(1, &normalbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(normals_buffer_data), normals_buffer_data, GL_STATIC_DRAW);
+
 	Simplex simplex;
 
 	const int global_map_size = 1000;
 	float global_map[global_map_size][global_map_size];
-	float resolution = 10.0;
+	float resolution = 30.0;
+	float hight = 5.0;
 	for (int x = 0; x < global_map_size; x++) {
-		for (int y = 0; y < global_map_size; y++) {
+		for (int z = 0; z < global_map_size; z++) {
 			float xx = (float)x/(float)global_map_size * resolution;
-			float yy = (float)y/(float)global_map_size * resolution; 
-			float height = (simplex.noise(xx, yy) + 1.0) / 2.0;
-			global_map[x][y] = height;
+			float zz = (float)z/(float)global_map_size * resolution; 
+			float height = (simplex.noise(xx, zz) + 1.0) / 2.0 * hight;
+			global_map[x][z] = height;
 		}
 	}
 	glm::vec2 position = vec2(global_map_size / 2.0 , global_map_size / 2.0);
 
-	std::vector<glm::vec3> local_map;
 
-	local_map.clear();
-	float size = 20.0f;
-	float step = 1.0f;
-	float tile = step * 0.45;
-	// Send our transformation to the currently bound shader, 
+	int size = 20;
+	float tile = 1.0f;
+	std::vector<glm::vec3> local_map(size*size);
+	// Send our transformation to the currentlz bound shader, 
 	// in the "MVP" uniform
 	auto update = [&]() {
 		local_map.clear();
-		for (float map_x = -size; map_x < size; map_x += step) {
-			for(float map_y = -size; map_y < size; map_y += step) {
-				int x = (int) (map_x + position.x);
-				int y = (int) (map_y + position.y);
-				if (x >= 0 && x < global_map_size && y >= 0 && y < global_map_size) {
-					float height = global_map[x][y];
-					local_map.push_back(vec3(map_x,map_y,height));
+		for(int map_z = 0; map_z < 2.0 * size; map_z++) {
+			for (int map_x = -map_z - 1 ; map_x < map_z + 1; map_x++) {
+				int x = map_x + (int)position.x;
+				int z = -map_z + (int)position.y;
+				if (x >= 0 && x < global_map_size && z >= 0 && z < global_map_size) {
+					float height = global_map[x][z];
+					local_map.push_back(vec3((float)map_x*tile,height,-(float)map_z*tile));
 				}
 			}
 		}
+		int x = (int) (position.x);
+		int z = (int) (position.y);
+		if (x >= 0 && x < global_map_size && z >= 0 && z < global_map_size) {
+			float height = global_map[x][z];
+			View = glm::lookAt(
+				glm::vec3(0,height+1.0,0), // Camera is at (4,3,-3), in World Space
+				glm::vec3(0,height+.5,-1), // and looks at the origin
+				glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
+			);
+		}
+
 	};
 
 	update();
 
-	vec2 up = vec2(0.0,1.0);
-	vec2 right = vec2(1.0,0.0);
+	glm::vec2 up = glm::vec2(0.0,1.0);
+	glm::vec2 right = glm::vec2(1.0,0.0);
 	float speed = 10.0;
 	int frame = 0;
+	glm::vec3 light_direction = glm::vec3(0.0, -1.0, 0.0);
+	glm::vec4 ligh_color = glm::vec4(1.0, 1.0, 1.0, 1.0);
+	glm::vec4 sky_color = glm::vec4(0.4,0.4,1.0,1.0);
+
 	do {
 		// glfwGetTime is called only once, the first time this function is called
 		static double lastTime = glfwGetTime();
@@ -180,9 +215,21 @@ int main( void )
 			0,                           // stride
 			(void*)0                     // array buffer offset
 		);
+		glEnableVertexAttribArray(vertexNormal_modelspaceID);
+		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glVertexAttribPointer(
+			vertexNormal_modelspaceID, // The attribute we want to configure
+			3,                           // size
+			GL_FLOAT,                    // type
+			GL_FALSE,                    // normalized?
+			0,                           // stride
+			(void*)0                     // array buffer offset
+		);
 		for (auto &item:local_map) {
-			glm::mat4 translation = glm::translate(glm::mat4(1), vec3(item.x,item.y,0.0));
-			glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile,tile,tile/10.0f));
+			//glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile*0.20,item.y,tile*0.2));
+			glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile*0.4,tile*0.4,tile*0.4));
+			//glm::mat4 translation = glm::translate(glm::mat4(1), vec3(item.x,0.0,item.z));
+			glm::mat4 translation = glm::translate(glm::mat4(1), vec3(item.x,item.y,item.z));
 			//glm::mat4 scale = glm::mat4(tile);
 			glm::mat4 Model      = translation*scale;
 			//glm::mat4 Model      = 	glm::mat4(1.0);
@@ -191,13 +238,14 @@ int main( void )
 			glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
 			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-			glUniform4f(ColorID, item.z,item.z,item.z,1.0);
+			glUniform4f(ColorID, item.y / hight,item.y/ hight,item.y/ hight,1.0);
 			// Draw the triangleS !
 			glDrawArrays(GL_TRIANGLES, 0, 12*3); // 12*3 indices starting at 0 -> 12 triangles
 		}
 
 
 		glDisableVertexAttribArray(vertexPosition_modelspaceID);
+		glDisableVertexAttribArray(vertexNormal_modelspaceID);
 
 		// Swap buffers
 		glfwSwapBuffers(window);
