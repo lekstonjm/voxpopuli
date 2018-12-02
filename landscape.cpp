@@ -18,7 +18,10 @@ using namespace glm;
 
 #include "shader.hpp"
 #include "cube.hpp"
-#include "simplex.hpp"
+
+#include "noise/noise.h"
+#include "noise/noiseutils.h"
+using namespace noise;
 
 int main( void )
 {
@@ -108,17 +111,55 @@ int main( void )
 	glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(normals_buffer_data), normals_buffer_data, GL_STATIC_DRAW);
 
-	Simplex simplex;
+	noise::module::Simplex simplex;
+	module::RidgedMulti mountainTerrain;
 
-	const int global_map_size = 1000;
+	module::Billow baseFlatTerrain;
+	baseFlatTerrain.SetFrequency (2.0);
+
+	module::ScaleBias flatTerrain;
+	flatTerrain.SetSourceModule (0, baseFlatTerrain);
+	flatTerrain.SetScale (0.125);
+	flatTerrain.SetBias (-0.75);
+	/*
+	module::Perlin terrainType;
+	terrainType.SetFrequency (0.5);
+	terrainType.SetPersistence (0.25);
+	*/
+
+	module::Simplex terrainType;
+	terrainType.SetFrequency (0.5);
+	terrainType.SetPersistence (0.25);
+	terrainType.SetOctaves(5);
+	terrainType.SetFractal(true);
+
+	module::Select finalTerrain;
+	finalTerrain.SetSourceModule (0, flatTerrain);
+	finalTerrain.SetSourceModule (1, mountainTerrain);
+	finalTerrain.SetControlModule (terrainType);
+	finalTerrain.SetBounds (0.0, 1000.0);
+	finalTerrain.SetEdgeFalloff (0.125);
+
+	utils::NoiseMap heightMap;
+	utils::NoiseMapBuilderPlane heightMapBuilder;
+	heightMapBuilder.SetSourceModule (finalTerrain);
+	heightMapBuilder.SetDestNoiseMap (heightMap);
+	heightMapBuilder.SetDestSize (512, 512);
+	heightMapBuilder.SetBounds (0.0, 5.0, 0.0, 5.0);
+	heightMapBuilder.Build ();
+
+
+	const int global_map_size = 512;
 	float global_map[global_map_size][global_map_size];
 	float resolution = 30.0;
-	float hight = 5.0;
+	float hight = 100.0;
 	for (int x = 0; x < global_map_size; x++) {
 		for (int z = 0; z < global_map_size; z++) {
 			float xx = (float)x/(float)global_map_size * resolution;
 			float zz = (float)z/(float)global_map_size * resolution; 
-			float height = (simplex.noise(xx, zz) + 1.0) / 2.0 * hight;
+			//float height = (simplex.noise(xx, zz) + 1.0) / 2.0 * hight;
+			float height = heightMap.GetValue(x,z);
+			height = ( height + 1.0 ) / 2.0 * hight;
 			global_map[x][z] = height;
 		}
 	}
@@ -148,7 +189,7 @@ int main( void )
 			float height = global_map[x][z];
 			View = glm::lookAt(
 				glm::vec3(0,height+1.0,0), // Camera is at (4,3,-3), in World Space
-				glm::vec3(0,height+.5,-1), // and looks at the origin
+				glm::vec3(0,height+.8,-1), // and looks at the origin
 				glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 			);
 		}
@@ -227,9 +268,9 @@ int main( void )
 		);
 		for (auto &item:local_map) {
 			//glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile*0.20,item.y,tile*0.2));
-			glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile*0.4,tile*0.4,tile*0.4));
+			glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile*0.5,item.y,tile*0.5));
 			//glm::mat4 translation = glm::translate(glm::mat4(1), vec3(item.x,0.0,item.z));
-			glm::mat4 translation = glm::translate(glm::mat4(1), vec3(item.x,item.y,item.z));
+			glm::mat4 translation = glm::translate(glm::mat4(1), vec3(item.x,0.0,item.z));
 			//glm::mat4 scale = glm::mat4(tile);
 			glm::mat4 Model      = translation*scale;
 			//glm::mat4 Model      = 	glm::mat4(1.0);
