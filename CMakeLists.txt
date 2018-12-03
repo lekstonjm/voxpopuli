@@ -18,14 +18,53 @@ set(CMAKE_CXX_EXTENSIONS OFF) #...without compiler extensions like gnu++11
 include_directories(
 	${GLFW_INCLUDE_PATH}
 	${GLEW_INCLUDE_PATH}
-	${GLM_INCLUDE_PATH}
+	${GLM_INCLUDE_PATH}	
 )
+
 add_compile_options(${CMAKE_REQUIRED_FLAGS})
+add_library(noise
+	./noise/latlon.cpp 
+	./noise/noisegen.cpp 
+	./noise/model/cylinder.cpp 
+	./noise/model/line.cpp 
+	./noise/model/plane.cpp 
+	./noise/model/sphere.cpp 
+	./noise/module/abs.cpp 
+	./noise/module/add.cpp 
+	./noise/module/billow.cpp 
+	./noise/module/blend.cpp 
+	./noise/module/cache.cpp 
+	./noise/module/checkerboard.cpp 
+	./noise/module/clamp.cpp 
+	./noise/module/const.cpp 
+	./noise/module/curve.cpp 
+	./noise/module/cylinders.cpp 
+	./noise/module/displace.cpp 
+	./noise/module/exponent.cpp 
+	./noise/module/invert.cpp 
+	./noise/module/max.cpp 
+	./noise/module/min.cpp 
+	./noise/module/modulebase.cpp 
+	./noise/module/multiply.cpp 
+	./noise/module/perlin.cpp 
+	./noise/module/simplex.cpp 
+	./noise/module/power.cpp 
+	./noise/module/ridgedmulti.cpp 
+	./noise/module/rotatepoint.cpp 
+	./noise/module/scalebias.cpp 
+	./noise/module/scalepoint.cpp 
+	./noise/module/select.cpp 
+	./noise/module/spheres.cpp 
+	./noise/module/terrace.cpp 
+	./noise/module/translatepoint.cpp 
+	./noise/module/turbulence.cpp 
+	./noise/module/voronoi.cpp 
+	./noise/noiseutils.cpp
+)
 
 add_executable(landscape
 	landscape.cpp
 	shader.cpp
-	simplex.cpp
 	cube.vert
 	cube.frag
 )
@@ -34,6 +73,7 @@ target_link_libraries(landscape
 	${OPENGL_LIBRARY} # filled by "find_package(OpenGL REQUIRED)"
 	${GLFW_LIBRARY}
 	${GLEW_LIBRARY}
+	noise
 )
 
 add_custom_command(
