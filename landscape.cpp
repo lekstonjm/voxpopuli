@@ -71,8 +71,10 @@ int main( void )
 	GLuint programID = LoadShaders( "cube.vert", "cube.frag" );
 
 	// Get a handle for our "MVP" uniform
-	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
-	GLuint ColorID = glGetUniformLocation(programID, "COLOR");
+	GLuint MVP_ID = glGetUniformLocation(programID, "MVP");
+	GLuint M_ID = glGetUniformLocation(programID, "M");
+	GLuint light_direction_ID = glGetUniformLocation(programID, "light_direction");
+	GLuint light_color_ID = glGetUniformLocation(programID, "light_color");
 
 	// Get a handle for our buffers
 	GLuint vertexPosition_modelspaceID = glGetAttribLocation(programID, "vertexPosition_modelspace");
@@ -202,10 +204,9 @@ int main( void )
 	glm::vec2 right = glm::vec2(1.0,0.0);
 	float speed = 10.0;
 	int frame = 0;
-	glm::vec3 light_direction = glm::vec3(0.0, -1.0, 0.0);
-	glm::vec4 ligh_color = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	glm::vec4 sky_color = glm::vec4(0.4,0.4,1.0,1.0);
-
+	//glm::vec3 light_direction = glm::vec3(0.0, -1.0, 0.0);
+	//glm::vec4 ligh_color = glm::vec4(1.0, 1.0, 1.0, 1.0);
+	//glm::vec4 sky_color = glm::vec4(0.4,0.4,1.0,1.0);
 	do {
 		// glfwGetTime is called only once, the first time this function is called
 		static double lastTime = glfwGetTime();
@@ -266,6 +267,9 @@ int main( void )
 			0,                           // stride
 			(void*)0                     // array buffer offset
 		);
+		glUniform4f(light_color_ID,1.0, 1.0, 1.0 ,1.0);
+		glUniform3f(light_direction_ID, 0.0, -1.0, 0.0);
+
 		for (auto &item:local_map) {
 			//glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile*0.20,item.y,tile*0.2));
 			glm::mat4 scale = glm::scale(glm::mat4(1),glm::vec3(tile*0.5,item.y,tile*0.5));
@@ -278,8 +282,10 @@ int main( void )
 			
 			glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
-			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-			glUniform4f(ColorID, item.y / hight,item.y/ hight,item.y/ hight,1.0);
+			glUniformMatrix4fv(MVP_ID, 1, GL_FALSE, &MVP[0][0]);
+			glUniformMatrix4fv(M_ID, 1, GL_FALSE, &Model[0][0]);
+			//glUniform4f(light_color_ID, item.y / hight,item.y/ hight,item.y/ hight,1.0);
+
 			// Draw the triangleS !
 			glDrawArrays(GL_TRIANGLES, 0, 12*3); // 12*3 indices starting at 0 -> 12 triangles
 		}
