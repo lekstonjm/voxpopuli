@@ -65,6 +65,8 @@ add_library(noise
 add_executable(landscape
 	landscape.cpp
 	shader.cpp
+	cube.cpp
+	heightmap_generator
 	cube.vert
 	cube.frag
 )

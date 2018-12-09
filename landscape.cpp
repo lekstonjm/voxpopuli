@@ -18,6 +18,7 @@ using namespace glm;
 
 #include "shader.hpp"
 #include "cube.hpp"
+#include "heightmap_generator.hpp"
 
 #include "noise/noise.h"
 #include "noise/noiseutils.h"
@@ -71,8 +72,10 @@ int main( void )
 	GLuint programID = LoadShaders( "cube.vert", "cube.frag" );
 
 	// Get a handle for our "MVP" uniform
-	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
-	GLuint ColorID = glGetUniformLocation(programID, "COLOR");
+	GLuint MVPID = glGetUniformLocation(programID, "mvp");
+	GLuint LightColorID = glGetUniformLocation(programID, "light_color");
+	GLuint LightDirectionID = glGetUniformLocation(programID, "light_direction");
+	GLuint ModelID = glGetUniformLocation(programID, "model");
 
 	// Get a handle for our buffers
 	GLuint vertexPosition_modelspaceID = glGetAttribLocation(programID, "vertexPosition_modelspace");
@@ -85,32 +88,21 @@ int main( void )
 								glm::vec3(0,0,-20), // and looks at the origin
 								glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 						   );
-	GLfloat normals_buffer_data[12*3*3];
-	for (int triangle_index = 0; triangle_index < 12; triangle_index++) {
-		int index = triangle_index * 3 * 3;
-		glm::vec3 v1(g_vertex_buffer_data[index++], g_vertex_buffer_data[index ++], g_vertex_buffer_data[index++]);
-		glm::vec3 v2(g_vertex_buffer_data[index++], g_vertex_buffer_data[index ++], g_vertex_buffer_data[index++]);
-		glm::vec3 v3(g_vertex_buffer_data[index++], g_vertex_buffer_data[index ++], g_vertex_buffer_data[index++]);
-		glm::vec3 vv1 = v2 - v1;
-		glm::vec3 vv2 = v3 - v2;
-		glm::vec3 normal = glm::normalize(glm::cross(vv1, vv2));
-		index = triangle_index * 3 * 3;		
-		for (int vertex_index = 0; vertex_index < 3; vertex_index++) {
-			normals_buffer_data[index++] = normal.x;
-			normals_buffer_data[index++] = normal.y;
-			normals_buffer_data[index++] = normal.z;
-		}
-	}
+
+	Cube cube;
+	/*
 	GLuint vertexbuffer;
 	glGenBuffers(1, &vertexbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube.vertice), cube.vertice, GL_STATIC_DRAW);
 
 	GLuint normalbuffer;
 	glGenBuffers(1, &normalbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(normals_buffer_data), normals_buffer_data, GL_STATIC_DRAW);
-
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube.normals), cube.normals, GL_STATIC_DRAW);
+	*/
+	cube.register_buffers();
+/*
 	noise::module::Simplex simplex;
 	module::RidgedMulti mountainTerrain;
 
@@ -121,11 +113,6 @@ int main( void )
 	flatTerrain.SetSourceModule (0, baseFlatTerrain);
 	flatTerrain.SetScale (0.125);
 	flatTerrain.SetBias (-0.75);
-	/*
-	module::Perlin terrainType;
-	terrainType.SetFrequency (0.5);
-	terrainType.SetPersistence (0.25);
-	*/
 
 	module::Simplex terrainType;
 	terrainType.SetFrequency (0.5);
@@ -147,18 +134,22 @@ int main( void )
 	heightMapBuilder.SetDestSize (512, 512);
 	heightMapBuilder.SetBounds (0.0, 5.0, 0.0, 5.0);
 	heightMapBuilder.Build ();
+*/
 
+	HeightmapGenerator heightmap_generator;
+	heightmap_generator.set_bounds(512, 0.0, 5.0);
 
 	const int global_map_size = 512;
 	float global_map[global_map_size][global_map_size];
 	float resolution = 30.0;
-	float hight = 100.0;
+	float hight = 20.0;
 	for (int x = 0; x < global_map_size; x++) {
 		for (int z = 0; z < global_map_size; z++) {
 			float xx = (float)x/(float)global_map_size * resolution;
 			float zz = (float)z/(float)global_map_size * resolution; 
 			//float height = (simplex.noise(xx, zz) + 1.0) / 2.0 * hight;
-			float height = heightMap.GetValue(x,z);
+			//float height = heightMap.GetValue(x,z);
+			float height = heightmap_generator.compute_height(x,z);
 			height = ( height + 1.0 ) / 2.0 * hight;
 			global_map[x][z] = height;
 		}
@@ -203,7 +194,7 @@ int main( void )
 	float speed = 10.0;
 	int frame = 0;
 	glm::vec3 light_direction = glm::vec3(0.0, -1.0, 0.0);
-	glm::vec4 ligh_color = glm::vec4(1.0, 1.0, 1.0, 1.0);
+	glm::vec4 ligh_color = glm::vec4(1.0, 1.0, .9, 1.0);
 	glm::vec4 sky_color = glm::vec4(0.4,0.4,1.0,1.0);
 
 	do {
@@ -222,12 +213,12 @@ int main( void )
 		frame++;
 		// Move forward
 		if (glfwGetKey( window, GLFW_KEY_UP ) == GLFW_PRESS){
-			position += up * deltaTime * speed;
+			position -= up * deltaTime * speed;
 			update();		
 		}
 		// Move backward
 		if (glfwGetKey( window, GLFW_KEY_DOWN ) == GLFW_PRESS){
-			position -= up * deltaTime * speed;
+			position += up * deltaTime * speed;
 			update();				
 		}
 		// Strafe right
@@ -247,7 +238,9 @@ int main( void )
 		glUseProgram(programID);
 		// 1rst attribute buffer : vertices
 		glEnableVertexAttribArray(vertexPosition_modelspaceID);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+		//glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, cube.vertice_id);
+
 		glVertexAttribPointer(
 			vertexPosition_modelspaceID, // The attribute we want to configure
 			3,                           // size
@@ -257,7 +250,8 @@ int main( void )
 			(void*)0                     // array buffer offset
 		);
 		glEnableVertexAttribArray(vertexNormal_modelspaceID);
-		glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		//glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, cube.normals_id);
 		glVertexAttribPointer(
 			vertexNormal_modelspaceID, // The attribute we want to configure
 			3,                           // size
@@ -278,8 +272,10 @@ int main( void )
 			
 			glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
-			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-			glUniform4f(ColorID, item.y / hight,item.y/ hight,item.y/ hight,1.0);
+			glUniformMatrix4fv(MVPID, 1, GL_FALSE, &MVP[0][0]);
+			glUniformMatrix4fv(ModelID, 1, GL_FALSE, &Model[0][0]);
+			glUniform4f(LightColorID, ligh_color.r, ligh_color.g, ligh_color.b, ligh_color.a);
+			glUniform3f(LightDirectionID, light_direction.x, light_direction.y, light_direction.z);
 			// Draw the triangleS !
 			glDrawArrays(GL_TRIANGLES, 0, 12*3); // 12*3 indices starting at 0 -> 12 triangles
 		}
@@ -297,7 +293,8 @@ int main( void )
 		   glfwWindowShouldClose(window) == 0 );
 
 	// Cleanup VBO and shader
-	glDeleteBuffers(1, &vertexbuffer);
+	//glDeleteBuffers(1, &vertexbuffer);
+	cube.unregister_buffers();
 	glDeleteProgram(programID);
 
 	// Close OpenGL window and terminate GLFW
